@@ -494,43 +494,43 @@ class PDiscoTrainer:
                         f'[GPU{self.global_rank}] Epoch {epoch} | Iter {it} | {step_type} '
                         f'Total Loss {losses_dict["loss_total_val"]:.5f}')
 
-        if not train and epoch == 0 and is_main_process():
-            map_dir = Path(os.path.join(self.snapshot_path, 'results_hie_' + self.sub_path_test))
-            map_dir.mkdir(parents=True, exist_ok=True)
-            maps_buffer = list(zip(*maps_buffer))
+        # if not train and epoch == 0 and is_main_process():
+        #     map_dir = Path(os.path.join(self.snapshot_path, 'results_hie_' + self.sub_path_test))
+        #     map_dir.mkdir(parents=True, exist_ok=True)
+        #     maps_buffer = list(zip(*maps_buffer))
 
-            relation_proto = []
-            for i, mb in enumerate(maps_buffer):
-                mb = torch.stack(mb, dim=0).mean(0)
-                max_values, max_indices = torch.max(mb, dim=1)
-                positions_column_first = [(max_indices[ii].item(), ii, max_values[ii].item()) for ii in range(len(max_indices)) if max_values[ii].item()>0.5]
-                relation_proto.append(positions_column_first)
+        #     relation_proto = []
+        #     for i, mb in enumerate(maps_buffer):
+        #         mb = torch.stack(mb, dim=0).mean(0)
+        #         max_values, max_indices = torch.max(mb, dim=1)
+        #         positions_column_first = [(max_indices[ii].item(), ii, max_values[ii].item()) for ii in range(len(max_indices)) if max_values[ii].item()>0.5]
+        #         relation_proto.append(positions_column_first)
 
-                src_dir = map_dir / "middle" / str(i) # 
-                tgt_dir = map_dir / "final"
-                for pos in positions_column_first:
-                    src_d = src_dir / str(pos[1])
-                    tgt_d = tgt_dir / f"Proto_{pos[0]}" / f"Layer_{i+12-len(maps_buffer)}"
-                    tgt_d.mkdir(parents=True, exist_ok=True)
-                    shutil.move(str(src_d), str(tgt_d / (src_d.name+"_"+str(round(pos[2], 2)))))
+        #         src_dir = map_dir / "middle" / str(i) # 
+        #         tgt_dir = map_dir / "final"
+        #         for pos in positions_column_first:
+        #             src_d = src_dir / str(pos[1])
+        #             tgt_d = tgt_dir / f"Proto_{pos[0]}" / f"Layer_{i+12-len(maps_buffer)}"
+        #             tgt_d.mkdir(parents=True, exist_ok=True)
+        #             shutil.move(str(src_d), str(tgt_d / (src_d.name+"_"+str(round(pos[2], 2)))))
             
-            for idx in range(mb.shape[-1]):
-                src_dir = map_dir / "middle" / str(len(maps_buffer))
-                tgt_dir = map_dir / "final"
-                src_d = src_dir / str(idx)
-                tgt_d = tgt_dir / f"Proto_{idx}" / f"Layer_12"
-                tgt_d.mkdir(parents=True, exist_ok=True)
-                shutil.move(str(src_d), str(tgt_d / (src_d.name+"_1.00")))
+        #     for idx in range(mb.shape[-1]):
+        #         src_dir = map_dir / "middle" / str(len(maps_buffer))
+        #         tgt_dir = map_dir / "final"
+        #         src_d = src_dir / str(idx)
+        #         tgt_d = tgt_dir / f"Proto_{idx}" / f"Layer_12"
+        #         tgt_d.mkdir(parents=True, exist_ok=True)
+        #         shutil.move(str(src_d), str(tgt_d / (src_d.name+"_1.00")))
 
-            shutil.rmtree(map_dir / "middle")
+        #     shutil.rmtree(map_dir / "middle")
 
-            for it, mini_batch in enumerate(dataloader):
-                source = mini_batch[0]
-                targets = mini_batch[1]
-                step_type = "Train" if train else "Eval"
-                source = source.to(self.local_rank, non_blocking=True)
-                targets = targets.to(self.local_rank, non_blocking=True)
-                self._run_batch(source, targets, train, vis_att_maps=vis_att_maps, curr_iter=it, vis_flag=relation_proto)
+        #     for it, mini_batch in enumerate(dataloader):
+        #         source = mini_batch[0]
+        #         targets = mini_batch[1]
+        #         step_type = "Train" if train else "Eval"
+        #         source = source.to(self.local_rank, non_blocking=True)
+        #         targets = targets.to(self.local_rank, non_blocking=True)
+        #         self._run_batch(source, targets, train, vis_att_maps=vis_att_maps, curr_iter=it, vis_flag=relation_proto)
 
         if train:
             for key in self.loss_dict_train.keys():
