@@ -19,7 +19,7 @@
 
 ## 🛠️ Installation 
 
-To install the required packages, run the following command: ```conda env create -f environment.yml```
+To install the required packages, run the following command: ```conda env create -f environment.yml``` and ```conda activate ivpt```
 
 ## 🗂️ Data preparation
 * Download the dataset (CUB_200_2011.tgz) from [here](https://www.vision.caltech.edu/datasets/cub_200_2011/).
@@ -28,7 +28,11 @@ To install the required packages, run the following command: ```conda env create
 * Run `python utils/img_aug.py --data_path /path/to/source_codes/datasets/cub200_cropped` to augment the training set. Note that `/path/to/source_codes/datasets/cub200_cropped` should be an absolute path. This will create an augmented training set in the following directory: `datasets/cub200_cropped/train_cropped_augmented/`.
 
 ## 🧪 Training and Evaluation
-Please refer to [INSTRUCTION.md](INSTRUCTION.md) for detailed instructions on the training command.
+We use 4 NVIDIA RTX A6000 GPUs for training. Please refer to [INSTRUCTION.md](INSTRUCTION.md) for detailed instructions on the training command. 
+
+Among them, `--n_pro` parameter specifies the prototype numbers at different layers. For example,  17,14,11,8,5 indicates 17 prototypes at the 9-th layer, 14 prototypes at the 10-th layer, 11 prototypes at the 11-th layer, 8 prototypes at the 12-th layer, and 5 prototypes for the final classification.
+
+If you have a different number of GPUs for training, please modify `--nproc_per_node` parameter.
 
 ```sh
 # model training
