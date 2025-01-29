@@ -8,7 +8,7 @@ def draw_point(img, point, bbox_size=10, color=(0, 0, 255)):
 def in_bbox(loc, bbox):
     return loc[0] >= bbox[0] and loc[0] <= bbox[1] and loc[1] >= bbox[2] and loc[1] <= bbox[3]
 
-data_root = '/Data/datasets/CUB_200_2011'
+data_root = '/root/datasets/CUB_200_2011'
 
 img_txt = os.path.join(data_root, 'images.txt')
 cls_txt = os.path.join(data_root, 'image_class_labels.txt')

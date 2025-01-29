@@ -1,7 +1,7 @@
 # training script
 model=vit_base_patch14_reg4_dinov2.lvd142m
 root=./snapshot
-dataroot=/data/Datasets
+dataroot=/root/datasets
 
 torchrun \
 --nnodes=1 \
@@ -32,7 +32,6 @@ torchrun \
 --smoothing 0 \
 --augmentations_to_use cub_original \
 --image_size 518 \
---num_parts 4 \
 --weight_decay 0 \
 --classification_loss 1 \
 --presence_loss 1 \
@@ -45,6 +44,5 @@ torchrun \
 --freeze_backbone \
 --presence_loss_type original \
 --modulation_type layer_norm \
---modulation_orth \
 --grad_norm_clip 2.0 \
 --n_pro 17,14,11,8,5

@@ -1,7 +1,7 @@
 # interpretability evaluation
 model=vit_base_patch14_reg4_dinov2.lvd142m
 root=./snapshot
-dataroot=/data/Datasets
+dataroot=/root/datasets
 
 python evaluate_consistency.py \
 --model_path ${root}/snapshot_best.pt \
