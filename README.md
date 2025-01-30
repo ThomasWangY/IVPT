@@ -53,11 +53,11 @@ To visualize specific regions in images, uncomment lines 497 to 533 in `engine\d
 
 In `./snapshot/results_hie_images`, each folder contains images illustrating a visual concept associated with a specific prototype at a particular layer. Below are example images from various folders.
 
-<p align="center">   <img src="docs/0_0.png" alt="Figure 1" width="30%">   <img src="docs/0_20.png" alt="Figure 2" width="30%">   <img src="docs/0_30.png" alt="Figure 3" width="30%"> </p>
+<p align="center">   <img src="docs/0_0.png" alt="Figure 1" width="20%">   <img src="docs/0_20.png" alt="Figure 2" width="20%">   <img src="docs/0_30.png" alt="Figure 3" width="20%"> </p>
 
 In `./snapshot/results_vis_images`, each folder contains images illustrating the segmentation of part regions at a specific level of granularity, corresponding to a particular layer of the model using a certain number of prototypes. Below are example images from various folders.
 
-<p align="center">   <img src="docs/vis.png" alt="Figure 1" width="80%">  </p>
+<p align="center">   <img src="docs/vis.png" alt="Figure 1" width=95%">  </p>
 
 ## 🔍 Citation
 
