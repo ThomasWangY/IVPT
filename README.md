@@ -1,6 +1,6 @@
-# IVPT: Interpretable Visual Prompt Tuning based on Part Prototypes
+# IVPT: Interpretable Visual Prompt Tuning based on Part Prototypes (ICLR 2026)
 
-> **Exploring Interpretability for Visual Prompt Tuning based on Part Prototypes**
+> **[Exploring Interpretability for Visual Prompt Tuning with Cross-layer Concepts](https://openreview.net/pdf?id=NHP2Y8IVMU)**
 >
 > [Yubin Wang](https://scholar.google.com/citations?user=mLeYNLoAAAAJ), [Xinyang Jiang](https://scholar.google.com/citations?user=JiTfWVMAAAAJ), [De Cheng](https://scholar.google.com/citations?user=180lASkAAAAJ),  Xiangqian Zhao,  [Zilong Wang](https://scholar.google.com/citations?user=gOaxHvMAAAAJ), [Dongsheng Li](https://scholar.google.com/citations?user=VNg5rA8AAAAJ), [Cairong Zhao](https://scholar.google.com/citations?user=z-XzWZcAAAAJ)
 
