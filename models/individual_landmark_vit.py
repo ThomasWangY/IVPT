@@ -1,12 +1,21 @@
-# Compostion of the VisionTransformer class from timm with extra features: https://github.com/huggingface/pytorch-image-models/blob/main/timm/models/vision_transformer.py
+"""IndividualLandmarkViT – Vision Transformer extended with part prototypes.
+
+Adds learnable part tokens, per-layer prototype biases, and soft-assignment
+heads on top of a ``timm`` ViT backbone.  This is the core IVPT model.
+
+Reference:
+    timm VisionTransformer – https://github.com/huggingface/pytorch-image-models
+"""
+
 import torch
 import torch.nn as nn
 from torch import Tensor
 from typing import Any, Union, Sequence
+
 from timm.models import create_model
 from timm.models.vision_transformer import Block, Attention
-from utils.misc_utils import compute_attention
 
+from utils.misc_utils import compute_attention
 from .layers.transformer_layers import BlockWQKVReturn, AttentionWQKVReturn
 from .layers.independent_mlp import IndependentMLPs
 import torch.nn.functional as F

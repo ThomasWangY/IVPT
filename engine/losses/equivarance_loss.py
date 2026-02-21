@@ -1,4 +1,8 @@
-# Code for the Equivariance Loss
+"""Equivariance loss for part prototype attention maps.
+
+Encourages the detected part locations to be equivariant under spatial
+affine transformations (rotation, scale, shear, translation).
+"""
 
 import torch
 from utils.data_utils.reversible_affine_transform import rigid_transform

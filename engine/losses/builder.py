@@ -1,3 +1,11 @@
+"""
+Loss function builder for IVPT.
+
+Provides utilities to construct classification losses (including mixup,
+label smoothing, and imbalanced top-k) and to assemble loss hyperparameters
+and equivariance affine-transform parameters.
+"""
+
 import torch
 from timm.data.mixup import Mixup
 from timm.loss import LabelSmoothingCrossEntropy, SoftTargetCrossEntropy

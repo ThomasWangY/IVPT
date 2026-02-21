@@ -1,4 +1,5 @@
-# This file contains the implementation of the IndependentMLPs class
+"""Independent MLP classifier for per-part feature classification."""
+
 import torch
 
 

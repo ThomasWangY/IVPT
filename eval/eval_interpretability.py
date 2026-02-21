@@ -155,7 +155,7 @@ class VisualizeAttentionMaps:
             Any extra information to add to the file name
         """
         
-        # 开始绘制
+        # Start plotting
         fig, ax = plt.subplots(3, 4, figsize=(20, 15))
 
         for idx in range(len(ims_)):
@@ -164,10 +164,10 @@ class VisualizeAttentionMaps:
             ims, part_label, region_pred, img_idx, heatmap = ims_[idx], part_label_[idx], region_pred_[idx], img_idx_[idx], heatmap_[idx]
             ims = torch.from_numpy(ims).float() / 255.0
             img = (ims.unsqueeze(0).cpu().numpy() * 255).astype(np.uint8).squeeze(0)
-            # 显示图像
+            # Display image
             ax[xx, 0+yy].imshow(img)
 
-            # 绘制边界框 (region_pred)
+            # Draw bounding box (region_pred)
             y_min, y_max, x_min, x_max = region_pred
             x_min = max(x_min, 0)
             y_min = max(y_min, 0)
@@ -177,21 +177,21 @@ class VisualizeAttentionMaps:
                                     linewidth=2, edgecolor='red', facecolor='none')
             ax[xx, 0+yy].add_patch(rect)
 
-            # 绘制 part_label 中的点，不同类别用不同的颜色
+            # Plot part_label points with different colors per category
             for label, x, y in part_label:
-                color = cmap(label - 1)  # 根据类别选择颜色，label 从 1 到 15
+                color = cmap(label - 1)  # Select color by category, label ranges from 1 to 15
                 ax[xx, 0+yy].scatter(x, y, color=color, s=50)
                 ax[xx, 0+yy].text(x, y, f'{label}', color='black', fontsize=8, ha='center', va='center', bbox=dict(facecolor='none', edgecolor='none', pad=1))
 
-            # 隐藏坐标轴
+            # Hide axes
             ax[xx, 0+yy].axis('off')
 
             cmap = cm.get_cmap('jet')
             heatmap_color = cmap(heatmap)[:, :, :3]
-            # 在第二个子图中叠加图像和热力图
-            ax[xx, 1+yy].imshow(img)  # 先显示背景图像
-            ax[xx, 1+yy].imshow(heatmap_color, alpha=0.6)  # 叠加热力图，透明度为 0.6
-            ax[xx, 1+yy].axis('off')  # 隐藏坐标轴
+            # Overlay image and heatmap in the second subplot
+            ax[xx, 1+yy].imshow(img)  # Display background image
+            ax[xx, 1+yy].imshow(heatmap_color, alpha=0.6)  # Overlay heatmap with alpha=0.6
+            ax[xx, 1+yy].axis('off')  # Hide axes
 
 
         save_dir = Path(os.path.join(self.snapshot_dir, 'results_single_proto' + self.sub_path_test))

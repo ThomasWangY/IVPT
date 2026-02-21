@@ -1,20 +1,21 @@
 """
-From: https://github.com/zxhuang1698/interpretability-by-parts/blob/master/src/cub200/eval_interp.py
+Consistency and stability evaluation script for IVPT.
+
+Evaluates the consistency and stability of learned part prototypes
+on the CUB-200-2011 dataset.
+
+Reference:
+    https://github.com/zxhuang1698/interpretability-by-parts/blob/master/src/cub200/eval_interp.py
 """
-# pytorch & misc
-import torch
-import torchvision.transforms as transforms
-from data_sets import FineGrainedBirdClassificationParts
-from load_model import load_model_ivpt
+
 import argparse
 import copy
-from engine.eval_interpretability_nmi_ari_keypoint import eval_nmi_ari, eval_kpr
-from engine.eval_fg_bg import FgBgIoU
-from utils.training_utils.engine_utils import load_state_dict_ivpt
-
 import os
+
 import torch
-import argparse
+
+from models.builder import load_model_ivpt
+from utils.training_utils.engine_utils import load_state_dict_ivpt
 from eval.eval_interpretability import evaluate_consistency, evaluate_stability
 
 torch.multiprocessing.set_sharing_strategy('file_system')

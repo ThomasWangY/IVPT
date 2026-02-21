@@ -1,7 +1,9 @@
-# Description: This file contains the code for the reversible affine transform
-import torchvision.transforms as transforms
-import torch
+"""Reversible affine transformations for equivariance loss computation."""
+
 from typing import List, Optional, Tuple, Any
+
+import torch
+import torchvision.transforms as transforms
 
 
 def generate_affine_trans_params(

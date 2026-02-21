@@ -1,8 +1,11 @@
-import torch
-from torch.utils.data import Dataset
-from typing import Optional
+"""Class-balanced distributed sampler for DDP training."""
+
 import math
+from typing import Optional
+
+import torch
 import torch.distributed as dist
+from torch.utils.data import Dataset
 
 
 class ClassBalancedDistributedSampler(torch.utils.data.Sampler):

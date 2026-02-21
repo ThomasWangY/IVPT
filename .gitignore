@@ -1,39 +1,52 @@
-# editor settings
-.idea
-.vscode
-_darcs
+# =============================================================================
+# IVPT .gitignore
+# =============================================================================
 
-# compilation and distribution
-__pycache__
-_ext
-*.pyc
-*.pyd
-*.so
-*.dll
-*.egg-info/
-build/
-dist/
-wheels/
-
-# pytorch/python/numpy formats
-*.pth
-*.pkl
-*.npy
-*.ts
-*.pt
-
-# ipython/jupyter notebooks
-*.ipynb
-**/.ipynb_checkpoints/
-
-# Editor temporaries
+# ---- Editor / IDE ----
+.idea/
+.vscode/
+.cursor/
+_darcs/
 *.swn
 *.swo
 *.swp
 *~
 
-# Results temporary
-*.txt
-*.tsv
+# ---- Python ----
+__pycache__/
+*.pyc
+*.pyd
+*.pyo
+*.egg-info/
+*.egg
+build/
+dist/
+wheels/
+*.so
+*.dll
+_ext/
+
+# ---- PyTorch / NumPy ----
+*.pth
+*.pkl
+*.npy
+*.pt
+
+# ---- Jupyter ----
+*.ipynb
+**/.ipynb_checkpoints/
+
+# ---- Logs & Results ----
 wandb/
 exps/
+snapshot/
+results_vis_*/
+results_hie_*/
+*.log
+
+# ---- Data (keep data instructions, not actual data) ----
+datasets/
+
+# ---- OS ----
+.DS_Store
+Thumbs.db

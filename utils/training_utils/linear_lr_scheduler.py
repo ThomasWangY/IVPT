@@ -1,4 +1,9 @@
-# Reference:https://github.com/microsoft/Swin-Transformer/blob/main/lr_scheduler.py
+"""Linear learning-rate scheduler.
+
+Reference:
+    https://github.com/microsoft/Swin-Transformer/blob/main/lr_scheduler.py
+"""
+
 import torch
 from timm.scheduler.scheduler import Scheduler
 

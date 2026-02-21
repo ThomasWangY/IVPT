@@ -1,3 +1,5 @@
+"""Enforced presence loss to encourage background part coverage."""
+
 import torch
 
 

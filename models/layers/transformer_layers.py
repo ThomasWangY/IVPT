@@ -1,9 +1,14 @@
-# Attention Block with option to return the mean of k over heads from attention
+"""Modified ``timm`` Attention / Block that also return QKV tensors.
+
+Used by :class:`~models.individual_landmark_vit.IndividualLandmarkViT` to
+extract intermediate attention information for the part-prototype mechanism.
+"""
+
+from typing import Tuple
 
 import torch
-from timm.models.vision_transformer import Attention, Block
 import torch.nn.functional as F
-from typing import Tuple
+from timm.models.vision_transformer import Attention, Block
 
 
 class AttentionWQKVReturn(Attention):

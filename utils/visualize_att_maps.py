@@ -1,18 +1,25 @@
-import matplotlib
+"""Attention map visualisation utilities for IVPT.
 
-matplotlib.use('Agg')
-import matplotlib.pyplot as plt
-from mpl_toolkits.axes_grid1 import make_axes_locatable
+Provides :class:`VisualizeAttentionMaps` which renders per-image argmax
+part overlays (with centroid labels), extracts cropped patches for each
+prototype, and generates hierarchical multi-layer attention figures.
+"""
+
+import copy
+import math
+import os
+from pathlib import Path
+
+import cv2
 import colorcet as cc
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt  # noqa: E402
+from mpl_toolkits.axes_grid1 import make_axes_locatable  # noqa: E402
 import numpy as np
 import skimage
-from pathlib import Path
-import os
 import torch
 from PIL import Image
-import cv2
-import math
-import copy
 
 from utils.data_utils.transform_utils import inverse_normalize_w_resize
 from utils.misc_utils import factors

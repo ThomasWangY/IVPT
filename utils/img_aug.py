@@ -1,6 +1,17 @@
-import Augmentor
-import os
+"""Data augmentation pipeline for cropped CUB images.
+
+Uses the ``Augmentor`` library to apply rotation, skew, and shear
+transforms to the training split of the cropped dataset.
+
+Usage::
+
+    python utils/img_aug.py --data_path datasets/cub200_cropped
+"""
+
 import argparse
+import os
+
+import Augmentor
 
 def makedir(path):
     '''

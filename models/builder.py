@@ -1,3 +1,10 @@
+"""
+Model builder utilities for IVPT.
+
+Provides functions to load backbone architectures (ResNet, ConvNeXt, ViT),
+initialize the IVPT model, and load pre-trained checkpoints.
+"""
+
 import copy
 import os
 from pathlib import Path
@@ -6,9 +13,8 @@ import torch
 from timm.models import create_model
 from torchvision.models import get_model
 
-from models import ivpt_vit_bb, ivptnet_vit_bb
-from models.individual_landmark_vit import IndividualLandmarkViT
-from utils import load_state_dict_ivpt
+from models.individual_landmark_vit import IndividualLandmarkViT, ivpt_vit_bb, ivptnet_vit_bb
+from utils.training_utils.engine_utils import load_state_dict_ivpt
 
 
 def load_model_arch(args, num_cls):

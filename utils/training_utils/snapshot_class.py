@@ -1,6 +1,8 @@
+"""Snapshot dataclass for checkpoint serialisation."""
+
 from collections import OrderedDict
 from dataclasses import dataclass
-from typing import Dict, Any, List
+from typing import Any, Dict, List
 
 import torch
 

@@ -1,11 +1,14 @@
+"""Distributed Data Parallel (DDP) setup and seed utilities."""
+
 import os
-import torch
-from torch.distributed import init_process_group
-import torch.distributed as dist
-import numpy as np
-import subprocess
-import socket
 import random
+import socket
+import subprocess
+
+import numpy as np
+import torch
+import torch.distributed as dist
+from torch.distributed import init_process_group
 
 
 def ddp_setup():
@@ -72,18 +75,18 @@ def set_seeds(seed_value: int = 42):
     # np.random.seed(seed_value)
     # torch.manual_seed(seed_value)
     # torch.cuda.manual_seed(seed_value)
-    # # 确保使用的是确定性算法
+    # # Ensure deterministic algorithms
     # torch.backends.cudnn.deterministic = True
     # torch.backends.cudnn.benchmark = False
 
-    # 获取当前进程的rank（多卡分布式时的GPU索引）
+    # Get the rank of the current process (GPU index in multi-GPU distributed mode)
     rank = dist.get_rank() if dist.is_initialized() else 0
     seed = seed_value + rank
     random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
-    torch.cuda.manual_seed_all(seed)  # 为所有GPU设置相同的种子
-    # 确保使用确定性算法
+    torch.cuda.manual_seed_all(seed)  # Set the same seed for all GPUs
+    # Ensure deterministic algorithms
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
 

@@ -1,8 +1,16 @@
+"""Foreground / Background IoU evaluation.
+
+Computes per-threshold binary Jaccard Index (IoU) between predicted
+foreground masks (derived from part attention maps) and ground-truth
+segmentation masks.
+"""
+
+import os
+
+import matplotlib.pyplot as plt
 import torch
 from torchmetrics.classification import BinaryJaccardIndex
 from tqdm import tqdm
-import matplotlib.pyplot as plt
-import os
 
 
 def plot_iou_figs(iou_values, iou_values_bg, model_path):

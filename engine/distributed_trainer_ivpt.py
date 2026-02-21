@@ -1,29 +1,41 @@
+"""
+Distributed trainer for IVPT.
+
+Implements ``PDiscoTrainer`` which handles multi-GPU (DDP) training,
+evaluation, checkpointing, and attention-map / hierarchical prototype
+visualization.
+"""
+
 import copy
 import os
+import shutil
 from dataclasses import asdict
-from typing import Dict, List, Any
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple
 
 import fsspec
 import numpy as np
+import torch
+import torch.distributed as dist
+import torch.nn.functional as F
+import torchmetrics
 from timm.data import Mixup
 from torch.distributed import destroy_process_group
 from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.utils.data import DataLoader
 from torch.utils.data.distributed import DistributedSampler
-import torch.nn.functional as F
-import torchmetrics
-from utils.training_utils.snapshot_class import Snapshot
-from utils.data_utils.reversible_affine_transform import generate_affine_trans_params
+
 from utils.data_utils.class_balanced_distributed_sampler import ClassBalancedDistributedSampler
 from utils.data_utils.class_balanced_sampler import ClassBalancedRandomSampler
+from utils.data_utils.epoch_fraction_sampler import EpochFractionDistributedSampler, EpochFractionSampler
+from utils.data_utils.reversible_affine_transform import generate_affine_trans_params
 from utils.training_utils.ddp_utils import ddp_setup, set_seeds
+from utils.training_utils.engine_utils import AverageMeter, load_state_dict_ivpt
+from utils.training_utils.snapshot_class import Snapshot
 from utils.visualize_att_maps import VisualizeAttentionMaps
-from utils.training_utils.engine_utils import load_state_dict_ivpt, AverageMeter
 from utils.wandb_params import init_wandb
+
 from .losses import *
-from pathlib import Path
-import shutil
-import torch.distributed as dist
 
 def is_main_process():
     return not dist.is_initialized() or dist.get_rank() == 0
@@ -58,9 +70,17 @@ class PDiscoTrainer:
             amap_saving_prob: float = 0.05,
             class_balanced_sampling: bool = False,
             num_samples_per_class: int = 100,
-            n_pro: str = ""
+            n_pro: str = "",
+            enable_hierarchy_vis: bool = False,
+            epoch_fraction: float = 1.0,
+            eval_every_n_epochs: int = 1,
+            eval_fraction: float = 1.0,
     ) -> None:
         self.n_pro = [int(n) for n in n_pro.split(',')]
+        self.enable_hierarchy_vis = enable_hierarchy_vis
+        self.epoch_fraction = epoch_fraction
+        self.eval_every_n_epochs = eval_every_n_epochs
+        self.eval_fraction = eval_fraction
         self._init_ddp(use_ddp)
         self.num_landmarks = model.num_landmarks
         self.num_classes = model.num_classes
@@ -76,8 +96,16 @@ class PDiscoTrainer:
         # Number of samples per class for class balanced sampling
         self.num_samples_per_class = num_samples_per_class
         self.train_loader = self._prepare_dataloader(train_dataset, num_workers=num_workers,
-                                                     class_balanced_sampling=class_balanced_sampling)
-        self.test_loader = self._prepare_dataloader(test_dataset, num_workers=num_workers, drop_last=False)
+                                                     class_balanced_sampling=class_balanced_sampling,
+                                                     is_train=True)
+        # Partial eval loader (used during training for periodic eval)
+        if self.eval_fraction < 1.0 and test_dataset is not None:
+            self.test_loader = self._prepare_dataloader(test_dataset, num_workers=num_workers,
+                                                        drop_last=False, is_eval_fraction=True)
+        else:
+            self.test_loader = self._prepare_dataloader(test_dataset, num_workers=num_workers, drop_last=False)
+        # Full eval loader (used for final evaluation after training completes)
+        self.test_loader_full = self._prepare_dataloader(test_dataset, num_workers=num_workers, drop_last=False)
         if len(loss_fn) == 1:
             self.loss_fn_train = self.loss_fn_eval = loss_fn[0]
         else:
@@ -243,51 +271,52 @@ class PDiscoTrainer:
                                                       non_blocking=True)}
 
     def _prepare_dataloader_ddp(self, dataset: torch.utils.data.Dataset, num_workers: int = 4,
-                                class_balanced_sampling: bool = False):
+                                class_balanced_sampling: bool = False, is_train: bool = False,
+                                is_eval_fraction: bool = False, drop_last: bool = True):
         if class_balanced_sampling:
-            return torch.utils.data.DataLoader(
-                dataset,
-                batch_size=self.batch_size,
-                pin_memory=True,
-                shuffle=False,
-                num_workers=num_workers,
-                drop_last=True,
-                sampler=ClassBalancedDistributedSampler(dataset, num_samples_per_class=self.num_samples_per_class)
-            )
+            sampler = ClassBalancedDistributedSampler(dataset, num_samples_per_class=self.num_samples_per_class)
+        elif is_train and self.epoch_fraction < 1.0:
+            sampler = EpochFractionDistributedSampler(dataset, fraction=self.epoch_fraction)
+        elif is_eval_fraction and self.eval_fraction < 1.0:
+            sampler = EpochFractionDistributedSampler(dataset, fraction=self.eval_fraction)
         else:
-            return torch.utils.data.DataLoader(
-                dataset,
-                batch_size=self.batch_size,
-                pin_memory=True,
-                shuffle=False,
-                num_workers=num_workers,
-                drop_last=True,
-                sampler=DistributedSampler(dataset)
-            )
+            sampler = DistributedSampler(dataset)
+        return torch.utils.data.DataLoader(
+            dataset,
+            batch_size=self.batch_size,
+            pin_memory=True,
+            shuffle=False,
+            num_workers=num_workers,
+            drop_last=drop_last,
+            sampler=sampler,
+        )
 
     def _prepare_dataloader(self, dataset: torch.utils.data.Dataset, num_workers: int = 4,
-                            class_balanced_sampling: bool = False, drop_last: bool = True):
+                            class_balanced_sampling: bool = False, drop_last: bool = True,
+                            is_train: bool = False, is_eval_fraction: bool = False):
         if self.use_ddp:
-            return self._prepare_dataloader_ddp(dataset, num_workers, class_balanced_sampling)
+            return self._prepare_dataloader_ddp(dataset, num_workers, class_balanced_sampling,
+                                                is_train=is_train, is_eval_fraction=is_eval_fraction,
+                                                drop_last=drop_last)
 
         if class_balanced_sampling:
-            return torch.utils.data.DataLoader(
-                dataset,
-                batch_size=self.batch_size,
-                pin_memory=True,
-                shuffle=False,
-                num_workers=num_workers,
-                drop_last=True,
-                sampler=ClassBalancedRandomSampler(dataset, num_samples_per_class=self.num_samples_per_class))
+            sampler = ClassBalancedRandomSampler(dataset, num_samples_per_class=self.num_samples_per_class)
+        elif is_train and self.epoch_fraction < 1.0:
+            sampler = EpochFractionSampler(dataset, fraction=self.epoch_fraction)
+        elif is_eval_fraction and self.eval_fraction < 1.0:
+            sampler = EpochFractionSampler(dataset, fraction=self.eval_fraction)
         else:
-            return torch.utils.data.DataLoader(
-                dataset,
-                batch_size=self.batch_size,
-                pin_memory=True,
-                shuffle=False,
-                num_workers=num_workers,
-                drop_last=drop_last,
-            )
+            sampler = None
+
+        return torch.utils.data.DataLoader(
+            dataset,
+            batch_size=self.batch_size,
+            pin_memory=True,
+            shuffle=(sampler is None),
+            num_workers=num_workers,
+            drop_last=drop_last,
+            sampler=sampler,
+        )
 
     def _load_snapshot(self) -> None:
         loc = f"cuda:{self.local_rank}"
@@ -494,43 +523,54 @@ class PDiscoTrainer:
                         f'[GPU{self.global_rank}] Epoch {epoch} | Iter {it} | {step_type} '
                         f'Total Loss {losses_dict["loss_total_val"]:.5f}')
 
-        # if not train and epoch == 0 and is_main_process():
-        #     map_dir = Path(os.path.join(self.snapshot_path, 'results_hie_' + self.sub_path_test))
-        #     map_dir.mkdir(parents=True, exist_ok=True)
-        #     maps_buffer = list(zip(*maps_buffer))
+        # ---- Hierarchical prototype visualization ----
+        # Activated when enable_hierarchy_vis=True during eval-only.
+        # Computes cross-layer prototype relationships, reorganises saved
+        # per-layer crops into a hierarchical folder layout, then re-runs
+        # the dataloader to produce per-image multi-layer overlay figures.
+        if not train and epoch == 0 and is_main_process() and self.enable_hierarchy_vis:
+            map_dir = Path(os.path.join(self.snapshot_path, 'results_hie_' + self.sub_path_test))
+            map_dir.mkdir(parents=True, exist_ok=True)
+            maps_buffer = list(zip(*maps_buffer))
 
-        #     relation_proto = []
-        #     for i, mb in enumerate(maps_buffer):
-        #         mb = torch.stack(mb, dim=0).mean(0)
-        #         max_values, max_indices = torch.max(mb, dim=1)
-        #         positions_column_first = [(max_indices[ii].item(), ii, max_values[ii].item()) for ii in range(len(max_indices)) if max_values[ii].item()>0.5]
-        #         relation_proto.append(positions_column_first)
+            relation_proto = []
+            for i, mb in enumerate(maps_buffer):
+                mb = torch.stack(mb, dim=0).mean(0)
+                max_values, max_indices = torch.max(mb, dim=1)
+                positions_column_first = [
+                    (max_indices[ii].item(), ii, max_values[ii].item())
+                    for ii in range(len(max_indices))
+                    if max_values[ii].item() > 0.5
+                ]
+                relation_proto.append(positions_column_first)
 
-        #         src_dir = map_dir / "middle" / str(i) # 
-        #         tgt_dir = map_dir / "final"
-        #         for pos in positions_column_first:
-        #             src_d = src_dir / str(pos[1])
-        #             tgt_d = tgt_dir / f"Proto_{pos[0]}" / f"Layer_{i+12-len(maps_buffer)}"
-        #             tgt_d.mkdir(parents=True, exist_ok=True)
-        #             shutil.move(str(src_d), str(tgt_d / (src_d.name+"_"+str(round(pos[2], 2)))))
-            
-        #     for idx in range(mb.shape[-1]):
-        #         src_dir = map_dir / "middle" / str(len(maps_buffer))
-        #         tgt_dir = map_dir / "final"
-        #         src_d = src_dir / str(idx)
-        #         tgt_d = tgt_dir / f"Proto_{idx}" / f"Layer_12"
-        #         tgt_d.mkdir(parents=True, exist_ok=True)
-        #         shutil.move(str(src_d), str(tgt_d / (src_d.name+"_1.00")))
+                src_dir = map_dir / "middle" / str(i)
+                tgt_dir = map_dir / "final"
+                for pos in positions_column_first:
+                    src_d = src_dir / str(pos[1])
+                    tgt_d = tgt_dir / f"Proto_{pos[0]}" / f"Layer_{i + 12 - len(maps_buffer)}"
+                    tgt_d.mkdir(parents=True, exist_ok=True)
+                    shutil.move(str(src_d), str(tgt_d / (src_d.name + "_" + str(round(pos[2], 2)))))
 
-        #     shutil.rmtree(map_dir / "middle")
+            for idx in range(mb.shape[-1]):
+                src_dir = map_dir / "middle" / str(len(maps_buffer))
+                tgt_dir = map_dir / "final"
+                src_d = src_dir / str(idx)
+                tgt_d = tgt_dir / f"Proto_{idx}" / "Layer_12"
+                tgt_d.mkdir(parents=True, exist_ok=True)
+                shutil.move(str(src_d), str(tgt_d / (src_d.name + "_1.00")))
 
-        #     for it, mini_batch in enumerate(dataloader):
-        #         source = mini_batch[0]
-        #         targets = mini_batch[1]
-        #         step_type = "Train" if train else "Eval"
-        #         source = source.to(self.local_rank, non_blocking=True)
-        #         targets = targets.to(self.local_rank, non_blocking=True)
-        #         self._run_batch(source, targets, train, vis_att_maps=vis_att_maps, curr_iter=it, vis_flag=relation_proto)
+            shutil.rmtree(map_dir / "middle", ignore_errors=True)
+
+            # Re-run the dataloader to generate hierarchical overlay images
+            for it, mini_batch in enumerate(dataloader):
+                source = mini_batch[0]
+                targets = mini_batch[1]
+                source = source.to(self.local_rank, non_blocking=True)
+                targets = targets.to(self.local_rank, non_blocking=True)
+                self._run_batch(source, targets, train,
+                                vis_att_maps=vis_att_maps, curr_iter=it,
+                                vis_flag=relation_proto)
 
         if train:
             for key in self.loss_dict_train.keys():
@@ -595,10 +635,15 @@ class PDiscoTrainer:
                 self._save_snapshot(epoch)
             elif self.local_rank == 0 and epoch == self.max_epochs:
                 self._save_snapshot(epoch)
-            # eval run
-            if self.test_loader:
+
+            # Periodic eval (partial test set, every eval_every_n_epochs)
+            should_eval = (self.test_loader and
+                           epoch % self.eval_every_n_epochs == 0 and
+                           epoch < self.max_epochs)
+            if should_eval:
                 self.model.eval()
-                loss_dict_val, acc_dict_test = self._run_epoch(epoch, self.test_loader, train=False)
+                with torch.inference_mode():
+                    loss_dict_val, acc_dict_test = self._run_epoch(epoch, self.test_loader, train=False)
                 if self.local_rank == 0 and self.global_rank == 0:
                     test_acc = acc_dict_test['test_acc']
                     self.epoch_test_accuracies.append(test_acc)
@@ -609,8 +654,40 @@ class PDiscoTrainer:
 
                     logging_dict.update(loss_dict_val)
                     logging_dict.update(acc_dict_test)
+                    if self.eval_fraction < 1.0:
+                        print(f"[Epoch {epoch}] Periodic eval ({self.eval_fraction*100:.0f}% test data) "
+                              f"| Acc: {test_acc:.2f}%")
                     for logger in self.loggers:
                         logger.log(logging_dict)
+            elif self.local_rank == 0 and self.global_rank == 0:
+                # Log training-only metrics when we skip eval
+                for logger in self.loggers:
+                    logger.log(logging_dict)
+
+        # ---- Final evaluation on full test set ----
+        if self.test_loader_full:
+            if self.local_rank == 0 and self.global_rank == 0:
+                print("\n" + "=" * 60)
+                print("Final evaluation on FULL test set")
+                print("=" * 60)
+            self.model.eval()
+            with torch.inference_mode():
+                loss_dict_val, acc_dict_test = self._run_epoch(self.max_epochs, self.test_loader_full, train=False)
+            if self.local_rank == 0 and self.global_rank == 0:
+                test_acc = acc_dict_test['test_acc']
+                self.epoch_test_accuracies.append(test_acc)
+                max_acc = max(self.epoch_test_accuracies)
+                max_acc_index = self.epoch_test_accuracies.index(max_acc)
+                if max_acc_index == len(self.epoch_test_accuracies) - 1:
+                    self._save_snapshot(self.max_epochs, save_best=True)
+                print(f"[Final] Full test set | Acc: {test_acc:.2f}% "
+                      f"| Top5: {acc_dict_test['test_acc_top5']:.2f}% "
+                      f"| Best: {max_acc:.2f}%")
+                final_log = {'epoch': self.max_epochs}
+                final_log.update(loss_dict_val)
+                final_log.update(acc_dict_test)
+                for logger in self.loggers:
+                    logger.log(final_log)
 
         if self.local_rank == 0 and self.global_rank == 0:
             self.finish_logging()
@@ -663,43 +740,51 @@ def launch_ivpt_trainer(model: torch.nn.Module,
                           amap_saving_prob: float = 0.05,
                           class_balanced_sampling: bool = False,
                           num_samples_per_class: int = 100,
-                          n_pro: str = ""
+                          n_pro: str = "",
+                          enable_hierarchy_vis: bool = False,
+                          epoch_fraction: float = 1.0,
+                          eval_every_n_epochs: int = 1,
+                          eval_fraction: float = 1.0,
                           ) -> None:
-    """Trains and tests a PyTorch model.
+    """Train and evaluate an IVPT model.
 
-    Passes a target PyTorch models through PDiscoTrainer class
-     for a number of epochs, training and testing the model
-    in the same epoch loop.
-
-    Calculates, prints and stores evaluation metrics throughout.
+    Instantiates a :class:`PDiscoTrainer`, then either trains for the
+    requested number of epochs (with periodic evaluation) or runs
+    evaluation only.
 
     Args:
-    model: A PyTorch model to be trained and tested.
-    train_dataset: A DataLoader instance for the model to be trained on.
-    test_dataset: A DataLoader instance for the model to be tested on.
-    optimizer: A PyTorch optimizer to help minimize the loss function.
-    scheduler: A PyTorch learning rate scheduler to adjust the learning rate during training.
-    loss_fn: A PyTorch loss function to calculate loss on both datasets.
-    epochs: An integer indicating how many epochs to train for.
-    device: A target device to compute on (e.g. "cuda" or "cpu").
-    save_every: An integer indicating how often to save the model.
-    snapshot_path: A string indicating where to save the model.
-    loggers: A list of loggers to log metrics to.
-    log_freq: An integer indicating how often to log metrics.
-    grad_norm_clip: A float indicating the maximum gradient norm to clip to.
-    enable_gradient_clipping: A boolean indicating whether to enable gradient clipping.
-    mixup_fn: A Mixup instance to apply mixup to the training data.
-    seed: An integer indicating the random seed to use.
-    eval_only: A boolean indicating whether to only run evaluation.
-    loss_hyperparams: A dictionary containing loss hyperparameters.
-    eq_affine_transform_params: A dictionary containing affine transform parameters.
-    use_ddp: A boolean indicating whether to use DDP.
-    sub_path_test: A string indicating the sub path of the test dataset.
-    dataset_name: A string indicating the name of the dataset.
-    amap_saving_prob: A float indicating the probability of saving attention maps.
-    class_balanced_sampling: A boolean indicating whether to use class-balanced sampling
-    num_samples_per_class: An integer indicating the number of samples per class for class-balanced sampling
-    @rtype: None
+        model: The IVPT model to train / evaluate.
+        train_dataset: Training dataset.
+        test_dataset: Test / validation dataset.
+        batch_size: Per-GPU batch size.
+        optimizer: Optimizer instance.
+        scheduler: LR scheduler instance.
+        loss_fn: List of loss functions ``[train_loss, eval_loss]``.
+        epochs: Total number of training epochs.
+        save_every: Save a checkpoint every *N* epochs.
+        loggers: List of logger objects (e.g. W&B run).
+        log_freq: Logging frequency (iterations).
+        use_amp: Enable mixed-precision training.
+        snapshot_path: Directory (or file) to save/load checkpoints.
+        grad_norm_clip: Max gradient norm for clipping.
+        num_workers: DataLoader workers.
+        mixup_fn: Optional Mixup / CutMix transform.
+        seed: Random seed.
+        eval_only: If ``True``, skip training and run evaluation only.
+        loss_hyperparams: Dict of loss weights and settings.
+        eq_affine_transform_params: Affine-transform params for equivariance.
+        use_ddp: Use DistributedDataParallel.
+        sub_path_test: Sub-path of the test image directory.
+        dataset_name: Name of the dataset (e.g. ``"cub"``).
+        amap_saving_prob: Probability of saving attention-map images.
+        class_balanced_sampling: Use class-balanced sampling.
+        num_samples_per_class: Samples per class when using balanced sampling.
+        n_pro: Comma-separated prototype counts per layer (e.g. ``"17,14,11,8,5"``).
+        enable_hierarchy_vis: Enable hierarchical prototype visualisation
+            during eval-only runs.
+        eval_every_n_epochs: Run evaluation every N epochs during training.
+        eval_fraction: Fraction of test data for periodic eval (full test set
+            is always used for the final evaluation after training).
     """
 
     set_seeds(seed)
@@ -720,7 +805,11 @@ def launch_ivpt_trainer(model: torch.nn.Module,
                                   amap_saving_prob=amap_saving_prob,
                                   class_balanced_sampling=class_balanced_sampling,
                                   num_samples_per_class=num_samples_per_class,
-                                  n_pro=n_pro)
+                                  n_pro=n_pro,
+                                  enable_hierarchy_vis=enable_hierarchy_vis,
+                                  epoch_fraction=epoch_fraction,
+                                  eval_every_n_epochs=eval_every_n_epochs,
+                                  eval_fraction=eval_fraction)
     if eval_only:
         model_trainer.test_only()
     else:

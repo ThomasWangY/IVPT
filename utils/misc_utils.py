@@ -1,10 +1,16 @@
-import math
-from functools import reduce
+"""Miscellaneous utility functions for IVPT.
 
-import torch
-import numpy as np
+Includes attention computation, attention rollout, SyncBN conversion,
+snapshot directory management, and small numerical helpers.
+"""
+
+import math
 import os
+from functools import reduce
 from pathlib import Path
+
+import numpy as np
+import torch
 
 
 def factors(n):

@@ -1,7 +1,11 @@
-import torch
+"""Optimizer builder and IVPT-specific parameter group matching."""
+
 import math
+
+import torch
 from timm.optim.lars import Lars
 from timm.optim.lamb import Lamb
+
 from utils.training_utils.ddp_utils import calculate_effective_batch_size
 
 

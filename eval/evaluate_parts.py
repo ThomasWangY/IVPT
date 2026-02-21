@@ -1,13 +1,22 @@
 """
-From: https://github.com/zxhuang1698/interpretability-by-parts/blob/master/src/cub200/eval_interp.py
+Interpretability evaluation script for IVPT.
+
+Evaluates model interpretability via keypoint regression (KPR),
+Normalized Mutual Information (NMI), Adjusted Rand Index (ARI),
+or Foreground/Background IoU.
+
+Reference:
+    https://github.com/zxhuang1698/interpretability-by-parts/blob/master/src/cub200/eval_interp.py
 """
-# pytorch & misc
-import torch
-import torchvision.transforms as transforms
-from data_sets import FineGrainedBirdClassificationParts
-from load_model import load_model_ivpt
+
 import argparse
 import copy
+
+import torch
+import torchvision.transforms as transforms
+
+from data_sets.fg_bird_dataset import FineGrainedBirdClassificationParts
+from models.builder import load_model_ivpt
 from engine.eval_interpretability_nmi_ari_keypoint import eval_nmi_ari, eval_kpr
 from engine.eval_fg_bg import FgBgIoU
 from utils.training_utils.engine_utils import load_state_dict_ivpt

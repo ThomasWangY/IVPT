@@ -1,4 +1,5 @@
-# This file contains the function to generate the center coordinates as tensor for the current net.
+"""Landmark coordinate extraction from attention maps."""
+
 import torch
 
 

@@ -1,3 +1,17 @@
+"""
+Main entry point for IVPT training and classification evaluation.
+
+Usage:
+    # Multi-GPU training
+    torchrun --nproc_per_node=4 train_net.py --data_path <path> ...
+
+    # Single-GPU training
+    python train_net.py --data_path <path> ...
+
+    # Evaluation only
+    python train_net.py --data_path <path> --eval_only --snapshot_dir <ckpt_dir>
+"""
+
 import torch
 from timeit import default_timer as timer
 
@@ -9,9 +23,9 @@ from utils.misc_utils import sync_bn_conversion, check_snapshot
 from utils.training_utils.ddp_utils import multi_gpu_check
 from utils.wandb_params import get_train_loggers
 from engine.distributed_trainer_ivpt import launch_ivpt_trainer
-from load_dataset import get_dataset
-from load_model import load_model_ivpt
-from load_losses import load_classification_loss, load_loss_hyper_params
+from data_sets.builder import get_dataset
+from models.builder import load_model_ivpt
+from engine.losses.builder import load_classification_loss, load_loss_hyper_params
 
 torch.backends.cudnn.benchmark = True
 
@@ -79,7 +93,11 @@ def ivpt_train_eval():
                           amap_saving_prob=args.amap_saving_prob,
                           class_balanced_sampling=args.use_class_balanced_sampling,
                           num_samples_per_class=args.num_samples_per_class,
-                          n_pro=args.n_pro
+                          n_pro=args.n_pro,
+                          enable_hierarchy_vis=args.enable_hierarchy_vis,
+                          epoch_fraction=args.epoch_fraction,
+                          eval_every_n_epochs=args.eval_every_n_epochs,
+                          eval_fraction=args.eval_fraction,
                           )
 
     # End the timer and print out how long it took

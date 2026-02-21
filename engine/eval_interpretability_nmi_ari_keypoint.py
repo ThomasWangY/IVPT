@@ -1,10 +1,18 @@
+"""Interpretability evaluation: KPR, NMI, and ARI.
+
+Evaluates the quality of learned part prototypes by measuring keypoint
+regression accuracy (KPR), Normalized Mutual Information (NMI), and
+Adjusted Rand Index (ARI) against ground-truth keypoint annotations.
+"""
+
+import numpy as np
 import torch
 import torch.nn.functional as F
-import numpy as np
 from sklearn.linear_model import LinearRegression
+from sklearn.metrics import adjusted_rand_score, normalized_mutual_info_score
 from sklearn.preprocessing import StandardScaler
-from sklearn.metrics import normalized_mutual_info_score, adjusted_rand_score
 from tqdm import tqdm
+
 from utils.get_landmark_coordinates import landmark_coordinates
 
 

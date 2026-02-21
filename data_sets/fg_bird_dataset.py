@@ -1,13 +1,21 @@
-"""Class CUB200 from: https://github.com/zxhuang1698/interpretability-by-parts/"""
+"""Fine-grained bird classification datasets (CUB-200, NABirds).
+
+Provides :class:`FineGrainedBirdClassificationDataset` for training/testing
+and :class:`FineGrainedBirdClassificationParts` for part-annotation-based
+interpretability evaluation.
+
+Reference:
+    https://github.com/zxhuang1698/interpretability-by-parts/
+"""
+
 import os
-import pandas as pd
-import PIL.Image
-import torch.utils.data
+from collections import defaultdict
+
 import numpy as np
+import pandas as pd
 import PIL.Image
 import torch
 import torch.utils.data
-from collections import defaultdict
 from utils.data_utils.dataset_utils import pil_loader, center_crop_boxes_kps
 from utils.misc_utils import file_line_count
 

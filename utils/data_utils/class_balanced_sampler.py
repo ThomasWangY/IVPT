@@ -1,3 +1,5 @@
+"""Class-balanced random sampler for single-GPU training."""
+
 import torch
 from torch.utils.data import Dataset
 

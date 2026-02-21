@@ -1,0 +1,156 @@
+# ============================================================================
+# IVPT Default Configuration for CUB-200-2011
+# ============================================================================
+
+# ---------- Model ----------
+model:
+  arch: vit_base_patch14_reg4_dinov2.lvd142m
+  pretrained: true
+  freeze_backbone: true
+  freeze_params: false
+  drop_path: 0.0
+  output_stride: 32
+  n_pro: "17,14,11,8,5"           # prototype numbers at different layers
+  num_parts: 4                     # number of foreground parts for evaluation
+  part_dropout: 0.3
+  noise_variance: 0.0
+  classifier_type: linear          # linear | independent_mlp
+  modulation_type: layer_norm      # original | layer_norm | parallel_mlp | none
+  gumbel_softmax: true
+  gumbel_softmax_temperature: 1.0
+  gumbel_softmax_hard: false
+  use_torchvision_resnet_model: false
+
+# ---------- Data ----------
+data:
+  dataset: cub
+  data_path: datasets/CUB_200_2011
+  image_sub_path_train: images
+  image_sub_path_test: images
+  image_size: 518
+  train_split: 1.0
+  eval_mode: test                  # train | val | test
+  augmentations: cub_original      # cub_original | timm
+  anno_path_train: ""
+  anno_path_test: ""
+  metadata_path: ""
+  species_id_to_name_file: ""
+
+# ---------- Training ----------
+training:
+  epochs: 25
+  batch_size: 4
+  num_workers: 2
+  seed: 42
+  grad_norm_clip: 2.0
+  use_amp: false
+  save_every_n_epochs: 8
+  amap_saving_prob: 0.2
+  use_class_balanced_sampling: false
+  num_samples_per_class: 100
+
+# ---------- Optimizer ----------
+optimizer:
+  type: adam                        # adam | adamw | sgd | nadam | lars | lamb
+  lr: 1.0e-6
+  weight_decay: 0
+  momentum: 0.9
+  betas: [0.9, 0.999]
+  scratch_lr_factor: 1.0e+4
+  modulation_lr_factor: 1.0e+4
+  finer_lr_factor: 200.0
+  dampening: 0.0
+  trust_coeff: 0.001
+  always_adapt: false
+  turn_off_grad_averaging: false
+  max_grad_norm: 1.0
+
+# ---------- Scheduler ----------
+scheduler:
+  type: steplr                      # cosine | steplr | linearlr
+  warmup_epochs: 0
+  warmup_lr: 1.0e-6
+  gamma: 0.5
+  step_size: 4
+  min_lr: 1.0e-6
+  restart_factor: 1
+  cosine_cycle_limit: 1
+
+# ---------- Loss ----------
+loss:
+  classification: 1.0
+  presence: 1.0
+  presence_beta: 0.1
+  presence_type: original           # original | soft_constraint | tanh | soft_tanh
+  equivariance: 1.0
+  orthogonality: 1.0
+  total_variation: 1.0
+  enforced_presence: 1.0
+  enforced_presence_type: enforced_presence  # linear | log | mse | enforced_presence
+  pixel_wise_entropy: 1.0
+  concentration: 0.0
+
+# ---------- Equivariance Affine Transform ----------
+equivariance:
+  degrees: 90.0
+  translate_x: 0.11
+  translate_y: 0.11
+  scale_l: 0.8
+  scale_u: 1.4
+  shear_x: 0.0
+  shear_y: 0.0
+
+# ---------- Augmentation (advanced) ----------
+augmentation:
+  color_jitter: 0.1
+  auto_augment: rand-m9-mstd0.5-inc1
+  smoothing: 0.0
+  train_interpolation: bicubic
+  imagenet_default_mean_and_std: true
+  hflip: 0.5
+  vflip: 0.0
+  reprob: 0.25
+  remode: pixel
+  recount: 1
+  resplit: false
+
+# ---------- Mixup ----------
+mixup:
+  enabled: false
+  alpha: 0.8
+  cutmix_alpha: 1.0
+  cutmix_minmax: null
+  prob: 1.0
+  switch_prob: 0.5
+  mode: batch
+
+# ---------- TopK (Imbalanced Noised TopK) ----------
+topk:
+  enabled: false
+  k: 5
+  epsilon: 0.01
+  max_m: 0.2
+  scale: 60
+  n_sample: 5
+
+# ---------- Logging ----------
+logging:
+  wandb: false
+  wandb_project: ""
+  wandb_entity: ""
+  wandb_mode: online
+  job_type: ""
+  group: vit_base
+  log_interval: 10
+
+# ---------- Visualization ----------
+visualization:
+  enable_hierarchy_vis: false  # hierarchical prototype visualisation (eval-only)
+
+# ---------- Checkpointing ----------
+checkpoint:
+  snapshot_dir: ./snapshot
+  resume_training: false
+  wandb_resume_id: null
+  array_training_job: false
+  crop_pct: null

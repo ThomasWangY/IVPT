@@ -1,3 +1,5 @@
+"""Image transform builders for training and evaluation."""
+
 import torch
 from torchvision import transforms as transforms
 from torchvision.transforms import Compose

@@ -1,8 +1,11 @@
-import torch
-import os
-from data_sets import FineGrainedBirdClassificationDataset
-from torchvision import datasets
-from collections import Counter
+"""
+Dataset builder for IVPT.
+
+Provides the ``get_dataset`` function to construct training and test
+datasets based on command-line arguments.
+"""
+
+from data_sets.fg_bird_dataset import FineGrainedBirdClassificationDataset
 
 
 def get_dataset(args, train_transforms, test_transforms):

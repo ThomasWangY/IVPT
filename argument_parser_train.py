@@ -1,10 +1,17 @@
-# Args Parser for training or evaluation (classification) of models
+"""
+Argument parser for IVPT training and classification evaluation.
+
+Defines all command-line arguments for model architecture, data paths,
+training hyper-parameters, loss weights, scheduler, optimizer, logging,
+and visualization options.
+"""
+
 import argparse
 
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        description='Model trainer for Image Classification'
+        description='IVPT: Interpretable Visual Prompt Tuning – Training & Evaluation'
     )
     parser.add_argument('--model_arch', default='vit_base_patch14_dinov2.lvd142m', type=str,
                         help='pick model architecture')
@@ -37,6 +44,20 @@ def parse_args():
     # Class balanced training sampling
     parser.add_argument('--use_class_balanced_sampling', default=False, action='store_true')
     parser.add_argument('--num_samples_per_class', default=100, type=int)
+
+    # Epoch fraction: use only a fraction of training data per epoch
+    # Data is split into ceil(1/fraction) shards and cycled across epochs,
+    # guaranteeing full coverage over multiple epochs.
+    parser.add_argument('--epoch_fraction', default=1.0, type=float,
+                        help='Fraction of training data per epoch (0,1]. '
+                             'e.g. 0.1 = 10%% data per epoch, full coverage every 10 epochs.')
+
+    # Eval frequency and eval fraction
+    parser.add_argument('--eval_every_n_epochs', default=1, type=int,
+                        help='Run evaluation every N epochs during training (default: 1 = every epoch).')
+    parser.add_argument('--eval_fraction', default=1.0, type=float,
+                        help='Fraction of test data to use for periodic eval during training (0,1]. '
+                             'Full test set is always used for the final evaluation after training.')
 
     # Attention map saving probability
     parser.add_argument('--amap_saving_prob', default=0.2, type=float) # TODO
@@ -201,6 +222,10 @@ def parse_args():
     # Array training job
     parser.add_argument('--array_training_job', default=False, action='store_true',
                         help='Whether to run as an array job (i.e. training with multiple random seeds on the same settings)')
+
+    # Hierarchical prototype visualization
+    parser.add_argument('--enable_hierarchy_vis', default=False, action='store_true',
+                        help='Enable hierarchical prototype visualization during eval-only runs')
 
     args = parser.parse_args()
     return args

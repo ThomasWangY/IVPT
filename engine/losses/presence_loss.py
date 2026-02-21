@@ -1,3 +1,5 @@
+"""Presence loss variants to encourage prototype activation."""
+
 import torch
 
 

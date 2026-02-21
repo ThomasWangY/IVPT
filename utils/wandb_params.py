@@ -1,5 +1,8 @@
-import wandb
+"""Weights & Biases (W&B) logging utilities for IVPT."""
+
 import copy
+
+import wandb
 
 
 def init_wandb(args):

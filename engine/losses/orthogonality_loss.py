@@ -1,3 +1,5 @@
+"""Orthogonality loss to encourage diversity among part prototypes."""
+
 import torch
 
 

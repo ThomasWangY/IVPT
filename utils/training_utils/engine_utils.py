@@ -1,5 +1,9 @@
-import torch
+"""Training engine utilities: meters, progress logging, checkpoint loading."""
+
 from enum import Enum
+
+import torch
+
 from .snapshot_class import Snapshot
 
 

@@ -1,6 +1,13 @@
+"""Crop CUB-200-2011 images by bounding box and split into train/test folders.
+
+Run as a standalone script — produces a ``cub200_cropped/`` directory with
+``train_cropped/`` and ``test_cropped/`` sub-directories.
+"""
+
 import os
-import cv2
 import shutil
+
+import cv2
 from tqdm import tqdm
 
 data_root = 'datasets/CUB_200_2011/'
