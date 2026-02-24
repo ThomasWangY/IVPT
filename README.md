@@ -216,7 +216,15 @@ This generates two types of output in the snapshot directory:
 If you use our work, please consider citing:
 
 ```bibtex
-
+@misc{wang2026exploringinterpretabilityvisualprompt,
+      title={Exploring Interpretability for Visual Prompt Tuning with Cross-layer Concepts}, 
+      author={Yubin Wang and Xinyang Jiang and De Cheng and Xiangqian Zhao and Zilong Wang and Dongsheng Li and Cairong Zhao},
+      year={2026},
+      eprint={2503.06084},
+      archivePrefix={arXiv},
+      primaryClass={cs.CV},
+      url={https://arxiv.org/abs/2503.06084}, 
+}
 ```
 
 ## 📧 Contact
